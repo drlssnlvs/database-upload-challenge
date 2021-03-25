@@ -1,9 +1,11 @@
-import { getRepository } from 'typeorm';
+import { getRepository, getCustomRepository } from 'typeorm';
 
 import AppError from '../errors/AppError';
 
 import Transaction from '../models/Transaction';
 import Category from '../models/Category'
+
+import TransactionRepository from '../repositories/TransactionsRepository'
 
 interface Request {
   title: string;
@@ -20,11 +22,17 @@ class CreateTransactionService {
     category,
   }: Request): Promise<Transaction> {
     if (!['income', 'outcome'].includes(type)) {
-      throw new AppError('type is invalid');
+      throw new AppError('the type must be income or outcome');
     }
 
-    const transactionRepository = getRepository(Transaction);
     const categoryRepository = getRepository(Category)
+    const transactionRepository = getCustomRepository(TransactionRepository)
+
+    const { balance } = await transactionRepository.getBalance()
+
+    if(type === "outcome" && value > balance.total) {
+      throw new AppError('balance invalid')
+    }
 
     const findCategory = await categoryRepository.findOne({ where: { title: category }})
 
